@@ -1,0 +1,110 @@
+library(tidyverse)
+library(lubridate)
+library(DT)
+library(scales)
+library(cowplot)
+
+#data collection
+data2014 <- rbind(apr14, may14, jun14, aug14, sep14)
+
+
+# Add new variables
+data2014$`Date/Time` <- as.POSIXct(data2014$`Date/Time`, format = "%m/%d/%Y %H:%M:%S")
+data2014$Time <- format(as.POSIXct(data2014$`Date/Time`, format = "%m/%d/%Y %H:%M:%S", 
+                                   format ="%H:%M:%S"))
+data2014$`Date/Time` <- ymd_hms(data2014$`Date/Time`)
+
+data2014$day <- factor(day(data2014$`Date/Time`))
+data2014$month <- factor(month(data2014$`Date/Time`, label = TRUE))
+data2014$year <- factor(year(data2014$`Date/Time`))
+data2014$dayofweek <- factor(wday(data2014$`Date/Time`, label = TRUE))
+
+data2014$hour <- factor(hour(data2014$Time))
+data2014$minute <- factor(minute(data2014$Time))
+data2014$second <- factor(second(data2014$Time))
+
+# remove NA
+data2014 <- data2014 %>%
+  select(1:12) %>%
+  drop_na()
+anyNA(data2014)
+
+# visualization and analysis
+
+hourdata <- data2014 %>%
+  group_by(hour) %>%
+  summarize(Total = n())
+
+ggplot(hourdata, aes(hour, Total)) +
+  geom_bar(stat = 'identity', fill = "steelblue", color = "red") +
+  ggtitle("trips every hour") +
+  theme(legend.position = "none") +
+  scale_y_continuous(labels = comma)
+
+monthdata <- data2014 %>%
+  group_by(month, hour) %>%
+  summarize(total = n())
+
+ggplot(monthdata, aes(hour, total, fill = month)) +
+  geom_bar(stat = "identity") +
+  ggtitle('trips by hour and month') +
+  scale_y_continuous(labels = comma)
+
+daydata <- data2014 %>%
+  group_by(day) %>%
+  summarize(total = n())
+
+ggplot(daydata, aes(day, total)) +
+  geom_bar(stat = 'identity', fill = "steelblue") +
+  ggtitle("trips every day") +
+  theme(legend.position = "none") +
+  scale_y_continuous(labels = comma)
+
+daymonth <- data2014 %>%
+  group_by(day, month) %>%
+  summarise(total = n())
+
+ggplot(daymonth, aes(day, total, fill = month)) + 
+  geom_bar( stat = "identity") +
+  ggtitle("Trips by Day and Month") +
+  scale_y_continuous(labels = comma) +
+  scale_colour_manual(values = cols)
+
+monthwday <- data2014 %>%
+  group_by(month, dayofweek) %>%
+  summarize(total = n())
+
+ggplot(monthwday , aes(month, total, fill = dayofweek)) +
+  geom_bar(stat = 'identity') +
+  ggtitle("trips by day and month") +
+  scale_y_continuous(labels = comma) +
+  scale_colour_manual(values = cols)
+
+ggplot(data2014, aes(Base)) +
+  geom_bar(fill = "blue") +
+  scale_y_continuous(labels = comma) +
+  ggtitle("trips by Base")
+
+ggplot(data2014, aes(Base, fill = month)) +
+  geom_bar(position = "dodge") +
+  scale_y_continuous(labels = comma) +
+  ggtitle("trips by base and month") +
+  scale_colour_manual(values = cols)
+
+ggplot(data2014, aes(Base, fill = dayofweek)) +
+  geom_bar(position = "dodge") +
+  scale_y_continuous(labels = comma) +
+  ggtitle("trips by bases and dayofweek") +
+  scale_colour_manual(values = cols)
+
+min_lat <- 40.5774
+max_lat <- 40.9176
+min_lon <- -74.15
+max_lon <- -73.7004
+
+ggplot(data2014, aes(x = Lon, y = Lat, color = Base)) +
+  geom_point(size = 1) +
+  scale_x_continuous(limits = c(min_lon, max_lon)) +
+  scale_y_continuous(limits = c(min_lat, max_lat)) +
+   theme_map() +
+  ggtitle("NYC MAP BASED ON UBER RIDES DURING (apr14 and sep14) BY BASE")
